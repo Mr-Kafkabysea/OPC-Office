@@ -168,7 +168,7 @@ export class Actor {
     const s = this.status, bot = this.bot;
     if (!bot) return;
     const attn = s === 'waiting_user' || s === 'error' || s === 'stuck';
-    const mode = this.selected ? 'sel' : attn ? 'attn' : this.hovered ? 'hover' : 'off';
+    const mode = this.selected ? 'sel' : attn ? 'attn' : (this.hovered || bot.chairman) ? 'hover' : 'off';
     let text = bot.name || '';
     if (mode === 'attn') {
       const reason = reasonText(s, bot.step);
@@ -363,7 +363,8 @@ export class Actor {
     if (!this.eyes.length) return;
     const s = this.status;
     let open = 1;
-    if (s === 'idle' && !this.spotIsLounge()) open = 0.12;        // sleeping at the desk
+    // Idle at a desk is a nap. The chairman and the people sat across from him are in a meeting, so they stay awake.
+    if (s === 'idle' && !this.spotIsLounge() && !this.bot?.chairman && !this.bot?.meeting) open = 0.12;
     else if (s === 'error') open = 0.55;
     else if (s === 'stuck') open = 0.7;
     if (open > 0.5 && !REDUCED) {

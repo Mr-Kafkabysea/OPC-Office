@@ -3,6 +3,7 @@
 // Without either (static preview) it runs on web/data/demo-state.json with a local simulation.
 import { initScene, renderScene, zoom, focusBot } from './scene/scene.js';
 import { initSound, sfx } from './audio/sound.js';
+import { withChairman } from './lib/executive.js';
 
 const POLL_MS = 1000;
 const view = { currentFloor: null, selectedBot: null };
@@ -124,7 +125,7 @@ async function poll() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
-    if (!data.unchanged) { state = data; render(); }
+    if (!data.unchanged) { state = withChairman(data); render(); }
   } catch {
     if (!state) await startLocalDemo();
     if (state?.demoLocal) return;          // static preview: no server, stop polling
@@ -137,7 +138,7 @@ async function poll() {
 const { feedFromLink } = await import('./lib/feedbase.js');
 if (feedFromLink(location)) {                              // #<topic>, #<topic>@<host>, ?feed=<host>#<topic>
   const { feedFromHash, connectFeed } = await import('./feed.js');
-  connectFeed(feedFromHash(location.hash, location.search), (data) => { state = data; render(); });
+  connectFeed(feedFromHash(location.hash, location.search), (data) => { state = withChairman(data); render(); });
   addEventListener('hashchange', () => location.reload());   // another channel: start over
 } else {
   poll();
@@ -147,7 +148,7 @@ if (feedFromLink(location)) {                              // #<topic>, #<topic>
 
 async function startLocalDemo() {
   const res = await fetch('./data/demo-state.json', { cache: 'no-store' });
-  state = await res.json();
+  state = withChairman(await res.json());
   state.demoLocal = true;
   render();
   demoTimer = setInterval(simulate, 1600);
@@ -172,7 +173,8 @@ const NEXT = {
 };
 
 function simulate() {
-  const bots = Object.values(state.bots);
+  const bots = Object.values(state.bots).filter((b) => !b.chairman);
+  if (!bots.length) return;
   const bot = bots[Math.floor(Math.random() * bots.length)];
   const cur = bot.effective_status;
   const next = weighted(NEXT[cur] || NEXT.idle);
@@ -204,10 +206,11 @@ function recount() {
   state.summary = { ...zero(), total: 0 };
   for (const f of state.floors) f.counts = zero();
   for (const b of Object.values(state.bots)) {
-    state.summary[b.effective_status]++;
-    state.summary.total++;
     const f = state.floors.find((x) => x.id === b.floor);
     if (f) f.counts[b.effective_status]++;
+    if (b.chairman) continue;                              // the owner is not a bot status
+    state.summary[b.effective_status]++;
+    state.summary.total++;
   }
 }
 

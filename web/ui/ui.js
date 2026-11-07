@@ -348,6 +348,7 @@ function counts(state) {
   const bots = state.bots;
   if (bots && typeof bots === 'object' && Object.keys(bots).length) {
     for (const id of Object.keys(bots)) {
+      if (bots[id]?.chairman) continue;                    // the owner is seated upstairs, not a bot status
       const s = effStatus(bots[id]);
       out[s] = (out[s] || 0) + 1;
     }
@@ -630,7 +631,7 @@ function buildPanel(root) {
     root, team, tcard, teamHead: head, teamTitle, teamSub, teamBig: big, nWait, nErr, rowWait, rowErr, lErr, list, teamEmpty,
     card: {
       root: card, hero, body, av, name, where, status, stDot, stTxt, now, taskBlock, task,
-      sSteps, sTasks, sHours, usageLabel, useBlock, fuel, fillBar, shareNum, hist, histSig: null, cta, fresh: true,
+      sSteps, sTasks, sHours, stats, usageLabel, useBlock, fuel, fillBar, shareNum, hist, histSig: null, stepsBlock, cta, fresh: true,
     },
   };
 }
@@ -1363,6 +1364,15 @@ function renderTeam(state, floor, o) {
     const s = effStatus(bot);
     setAvatar(c.av, bot, s);
     setText(c.name, bot.name || id);
+    if (bot.chairman) {
+      setText(c.step, 'Chairman');
+      setText(c.seen, '');
+      setAttr(c.seen, 'title', 'Chairman');
+      setAttr(c.btn, 'data-s', s);
+      setAttr(c.btn, 'aria-label', (bot.name || id) + ', Chairman');
+      setAttr(c.btn, 'title', (bot.name || id) + ' · Chairman');
+      return c.btn;
+    }
     const unrep = s === 'idle' ? unreportedText(bot) : '';
     const quiet = s === 'idle' && bot.status === 'working';   // went silent mid-task: its last step is stale
     setText(c.step, unrep || (quiet ? statusLabel(s) : bot.step || statusLabel(s)));
@@ -1398,6 +1408,22 @@ function renderCard(state, bot) {
 
   const fl = (state.floors || []).find((x) => x.id === bot.floor);
   const where = (fl && (fl.name || fl.id)) || bot.group || '';
+  if (bot.chairman) {
+    setText(c.where, (where || '董事长层（Chairman\'s Floor）') + ' · Chairman');
+    setAttr(c.stDot, 'data-s', 'idle');
+    setText(c.stTxt, 'Chairman');
+    setText(c.now, 'Chairman');
+    setHidden(c.taskBlock, true);
+    setHidden(c.stats, true);
+    setHidden(c.useBlock, true);
+    setHidden(c.stepsBlock, true);
+    setHidden(c.cta, true);
+    c.fresh = false;
+    return;
+  }
+  setHidden(c.stats, false);
+  setHidden(c.stepsBlock, false);
+  setHidden(c.cta, false);
   const desk = Number.isFinite(Number(bot.desk)) && bot.desk != null ? ' · desk ' + Number(bot.desk) : '';
   setText(c.where, where + desk + ' · ' + seenText(bot));
 

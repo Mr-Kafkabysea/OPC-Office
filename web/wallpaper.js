@@ -56,6 +56,7 @@ export function renderUI(state) {
   if (!el || !state) return;
   let working = 0, attention = 0, error = 0, total = 0;
   for (const bot of Object.values(state.bots || {})) {
+    if (bot.chairman) { total++; continue; }               // seated upstairs; not a working / waiting bot
     total++;
     switch (bot.effective_status || bot.status) {
       case 'working': working++; break;

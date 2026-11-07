@@ -25,10 +25,10 @@
  * back when the window grows. ?sheet=open starts with the sheet expanded (for screenshots).
  */
 
-// Resolved against this file, so it works from /web/index.html, from a server rooted at web/, and from the harness.
-const THUMB_BASE = new URL('../../assets/blobs/thumbs/', import.meta.url).href;
+import { assetUrl, avatarSources, nextAvatarSource } from '../lib/avatars.js';
+
 // the product logo, exactly as is (a 400x400 square), shown small in the brand pill
-const MARK_SRC = new URL('../../assets/brand/logo-mark.png', import.meta.url).href;
+const MARK_SRC = assetUrl('assets/brand/logo-mark.png', import.meta.url);
 const FEED_ROWS = 4;
 const STEPS_SHOWN = 3;
 const FEED_OUT_MS = 420;
@@ -102,7 +102,7 @@ function freshState(handlers) {
     floors: new Map(), activeFloorId: null,
     cells: new Map(),
     feedRows: new Map(), feedOut: new Set(), feedMode: null, feedFirst: true,
-    failedThumbs: new Set(),
+    failedAvatars: new Set(),
     mode: null, cardBot: null, teamFloor: null, teamReady: false, ready: false,
     keyHandler: null, ro: null, ro2: null, onResize: null, timer: null, fades: [],
     sh: null, phone: false, land: false, mqs: null, mqFn: null, ro3: null, cardY: 0, cardStop: null, chipFloor: null,
@@ -367,61 +367,59 @@ function makeAva(opts) {
   const inner = h('span', { class: 'bhq-av' }, img, fb);
   const orb = opts.orb === false ? null : h('i', { class: 'bhq-orb', 'aria-hidden': 'true' });
   const root = h('span', { class: 'bhq-ava' + (opts.cls ? ' ' + opts.cls : '') }, inner, orb);
+  // A missing named thumb tries the library blob before the initials. A stale error (the src
+  // changed while the request was in flight) is ignored via _token.
   img.addEventListener('error', () => {
-    if (img._name) U.failedThumbs.add(img._name);
-    inner.classList.add('is-fb');
+    const token = img._token;
+    queueMicrotask(() => {
+      if (!U || img._token !== token) return;
+      const step = nextAvatarSource(img._sources, img._i || 0);
+      if (!step.src) {
+        if (img._key) U.failedAvatars.add(img._key);
+        inner.classList.add('is-fb');
+        return;
+      }
+      img._i = step.index;
+      img._token = (img._token || 0) + 1;
+      inner.classList.remove('is-fb');
+      img.src = step.src;
+    });
   });
   img.addEventListener('load', () => inner.classList.remove('is-fb'));
   return { root, inner, img, fb };
 }
 
 function setAvatar(av, bot, status) {
-  const name = bot.avatar || bot.id || '';
   const color = isHex(bot.color) ? bot.color : '#A1A1A6';
   setVar(av.root, '--c', color);
   setVar(av.root, '--fg', textOn(color));
   setCls(av.root, 'is-dark', lum(color) < 0.04); // a black bot gets a faint rim so it does not sink into the graphite
   setAttr(av.root, 'data-s', status || null);
-  setText(av.fb, initials(bot.name));
-  if (av.img._name !== name) {
-    av.img._name = name;
-    if (!name || U.failedThumbs.has(name)) {
-      av.img.removeAttribute('src');
-      av.inner.classList.add('is-fb');
-    } else {
-      av.inner.classList.remove('is-fb');
-      // a hand-made thumb when the bot has one, else the pre-rendered 3D library (its shape, the nearest colour)
-      av.img.src = bot.has_glb === false ? libThumb(bot) : THUMB_BASE + encodeURIComponent(name) + '.png';
-    }
+  setText(av.fb, initials(bot.name)); // last resort, shown only while .is-fb (the image never arrived)
+  const sources = avatarSources(bot);
+  const key = sources.join('\n');
+  if (av.img._key === key) return;
+  av.img._key = key;
+  av.img._sources = sources;
+  if (U.failedAvatars.has(key)) {
+    av.inner.classList.add('is-fb');
+    return;
   }
+  showAvatarSource(av, 0);
 }
 
-// assets/blobs/lib (export_lib.mjs + build_blobs.py --lib-from): every shape in the Grok Bot app's 11 colours, so anyone's bot gets a 3D avatar
-const LIB_BASE = new URL('../../assets/blobs/lib/', import.meta.url).href;
-// The office's own blobs (web/scene/blobgen.js, traced from the Grok Bot app) in the app's 11 colours, rendered by
-// assets/_src/blobs/export_lib.mjs + build_blobs.py --lib-from. Shapes = web/scene/looks.js SHAPES (13 app shapes, then
-// 3 older ids), colours = the app's palette (blobgen APP_COLORS); sphere + stem has its own picture (the app's 14th).
-const LIB_SHAPES = ['sphere', 'cloud', 'rounded_square', 'star4', 'clover', 'bubble', 'flower', 'drop', 'pill', 'triangle', 'pentagon', 'star6', 'hexagon', 'rounded_cube', 'cone', 'trio'];
-const LIB_COLORS = ['000000', 'A06B39', 'FB2B3E', 'FD690F', 'F59312', '14C16F', '13B7A2', '1E86FC', '8F59F9', 'F93498', '959595'];
-function libThumb(bot) {
-  const fnv = (s) => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; return h; };
-  const id = String(bot.id || bot.name || '');
-  const look = bot.look || {};
-  // nobody described it: the same shape as its blob in the office (looks.js hashShape picks among the 13 app shapes)
-  let shape = LIB_SHAPES.includes(look.shape) ? look.shape : LIB_SHAPES[(fnv(`shape:${id}`) >>> 4) % 13];
-  if (shape === 'sphere' && look.accessory === 'stem') shape = 'sphere_stem';
-  const m = /^#([0-9a-f]{6})$/i.exec(look.color || bot.color || '');
-  let hex = LIB_COLORS[fnv(`color:${id}`) % 10];
-  if (m) {                                               // nearest by weighted RGB; greys go to the app's black or gray
-    const rgb = (x) => [0, 2, 4].map((i) => parseInt(x.slice(i, i + 2), 16)), [r, g, b] = rgb(m[1]);
-    let best = Infinity;
-    if (Math.max(r, g, b) - Math.min(r, g, b) < 28) { hex = (r + g + b) / 3 < 75 ? '000000' : '959595'; best = 0; }
-    for (const p of LIB_COLORS) {
-      const [pr, pg, pb] = rgb(p), rm = (r + pr) / 2, d = (2 + rm / 256) * (r - pr) ** 2 + 4 * (g - pg) ** 2 + (3 - rm / 256) * (b - pb) ** 2;
-      if (d < best) { best = d; hex = p; }
-    }
+function showAvatarSource(av, index) {
+  const img = av.img;
+  const src = img._sources && img._sources[index];
+  img._i = index;
+  img._token = (img._token || 0) + 1;
+  if (!src) {
+    if (img._key) U.failedAvatars.add(img._key);
+    av.inner.classList.add('is-fb');
+    return;
   }
-  return `${LIB_BASE}${shape}-${hex}.png`;
+  av.inner.classList.remove('is-fb');
+  img.src = src;
 }
 
 /* ------------------------------------------------------------------ init */

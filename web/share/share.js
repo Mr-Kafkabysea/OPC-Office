@@ -11,10 +11,11 @@
 // Esc, a click outside or the button again close it.
 import { captureScene } from '../scene/scene.js';
 import { sfx } from '../audio/sound.js';
+import { assetUrl } from '../lib/avatars.js';
 
 const W = 1600, H = 900;
 const SUPERSAMPLE = 1.5;                               // desktop only: phones render at 1x (GPU memory)
-const MARK_SRC = new URL('../../assets/brand/logo-mark.png', import.meta.url).href;
+const MARK_SRC = assetUrl('assets/brand/logo-mark.png', import.meta.url);
 const FILE_NAME = 'grok-bot-office.png';
 const POST_TEXT = 'My Grok Bot office';
 const INK = '#16171A', GREY = '#7A7B82', WORKING = '#34C759';

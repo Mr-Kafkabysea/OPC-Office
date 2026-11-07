@@ -1,38 +1,71 @@
-// Glue: polls /api/state (CONTRACT §4), keeps the view (floor, selection), feeds the scene and the UI.
-// With #<topic> in the link it reads the user's bots from their channel instead (feed.js, lib/feedbase.js): no server.
-// Without either (static preview) it runs on web/data/demo-state.json with a local simulation.
-import { initScene, renderScene, zoom, focusBot } from './scene/scene.js';
-import { initSound, sfx } from './audio/sound.js';
+// Glue: keeps the view (floor, selection) and feeds the scene and the UI.
+// The office opens for a channel in the link (#<topic>, feed.js / lib/feedbase.js), a channel this browser
+// already opened (the hash is put back in the address bar first), ?demo=1, or a local journal at /api/state.
+// A bare public visit has none of those, so the page stays locked and does not load the sample roster.
 import { withChairman } from './lib/executive.js';
-import { initUI, renderUI } from './ui/ui.js';
+import { CHANNEL_KEY, entryLocation } from './lib/access.js';
 
 const POLL_MS = 1000;
 const view = { currentFloor: null, selectedBot: null };
 let state = null;
 let demoTimer = null;
+let renderScene = null;
+let renderUI = () => {};
+let zoom = () => {};
+let focusBot = () => {};
+let sfx = null;
 
-const params = new URLSearchParams(location.search);
+function readSaved() {
+  try { return JSON.parse(localStorage.getItem(CHANNEL_KEY) || 'null'); } catch { return null; }
+}
 
-initScene(document.getElementById('scene'), {
-  onSelectBot: (id) => select(id),
-  onHoverBot: (id) => sfx.hover(id),
-});
+function remember(channel) {
+  try { localStorage.setItem(CHANNEL_KEY, JSON.stringify({ hash: channel.hash, search: channel.search })); } catch { /* private mode */ }
+}
 
-initUI({
-  onSelectBot: (id) => select(id),
-  onSelectFloor: (id) => setFloor(id),
-  onZoom: (dir) => { zoom(dir); sfx.zoom(dir); },
-  onOpenChat: (id, url) => { if (url) location.href = url; },
-});
+const plan = entryLocation(location.pathname, location, readSaved());
+if (plan.href) history.replaceState(null, '', plan.href);
+addEventListener('hashchange', () => location.reload());   // another channel: start over
 
-initSound({ slot: document.querySelector('#topbar .bhq-right') });
+if (plan.access.mode === 'feed') {
+  remember(plan.access.channel);
+  document.documentElement.dataset.gate = 'open';
+  await openFeed(plan.access.channel);
+} else if (plan.access.mode === 'demo') {
+  document.documentElement.dataset.gate = 'open';
+  await openDemo();
+} else {
+  document.documentElement.dataset.gate = 'locked';
+  probeJournal();
+}
 
-addEventListener('keydown', (e) => { if (e.key === 'Escape') select(null); });
+async function loadOffice() {
+  const scene = await import('./scene/scene.js');
+  const sound = await import('./audio/sound.js');
+  const ui = await import('./ui/ui.js');
+  renderScene = scene.renderScene;
+  zoom = scene.zoom;
+  focusBot = scene.focusBot;
+  sfx = sound.sfx;
+  renderUI = ui.renderUI;
+  scene.initScene(document.getElementById('scene'), {
+    onSelectBot: (id) => select(id),
+    onHoverBot: (id) => sfx.hover(id),
+  });
+  ui.initUI({
+    onSelectBot: (id) => select(id),
+    onSelectFloor: (id) => setFloor(id),
+    onZoom: (dir) => { zoom(dir); sfx.zoom(dir); },
+    onOpenChat: (id, url) => { if (url) location.href = url; },
+  });
+  sound.initSound({ slot: document.querySelector('#topbar .bhq-right') });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') select(null); });
+}
 
 function select(id) {
   const before = view.selectedBot;
   view.selectedBot = id && state?.bots[id] ? id : null;
-  if (view.selectedBot !== before) sfx.select(!!view.selectedBot);
+  if (view.selectedBot !== before && sfx) sfx.select(!!view.selectedBot);
   if (view.selectedBot) {
     const bot = state.bots[view.selectedBot];
     if (bot.floor !== view.currentFloor) setFloor(bot.floor, true);
@@ -45,7 +78,7 @@ function select(id) {
 
 function setFloor(id, keepSelection = false) {
   if (!state?.floors.some((f) => f.id === id)) return;
-  if (id !== view.currentFloor) {                        // the elevator's chime rings higher on higher floors
+  if (id !== view.currentFloor && sfx) {                 // the elevator's chime rings higher on higher floors
     const order = [...state.floors].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).findIndex((f) => f.id === id);
     sfx.floor(order);
   }
@@ -65,7 +98,7 @@ function pickDefaultFloor() {
 }
 
 function render() {
-  if (!state) return;
+  if (!state || !renderScene) return;
   if (!view.currentFloor || !state.floors.some((f) => f.id === view.currentFloor)) view.currentFloor = pickDefaultFloor();
   if (view.selectedBot && !state.bots[view.selectedBot]) view.selectedBot = null;
   renderScene(state, view);
@@ -83,12 +116,32 @@ function soundStatusChanges() {
     const fresh = new Set();
     for (const [id, s] of Object.entries(now)) if (lastStatus[id] && lastStatus[id] !== s) fresh.add(s);
     const kind = ['waiting_user', 'error', 'done'].find((k) => fresh.has(k));
-    if (kind) sfx.status(kind);
+    if (kind && sfx) sfx.status(kind);
   }
   lastStatus = now;
 }
 
-// ---------- live polling ----------
+// The public pages host has no /api/state, so this fails and the lock stays. A local journal server answers
+// with that journal's team, and only then is the office shown. A failed request never loads the sample roster.
+async function probeJournal() {
+  let res;
+  try {
+    res = await fetch('api/state', { cache: 'no-store', credentials: 'same-origin' });
+  } catch {
+    return;
+  }
+  if (document.documentElement.dataset.gate !== 'locked') return;
+  if (res.status === 401) { location.href = 'login'; return; }
+  if (!res.ok) return;
+  let data;
+  try { data = await res.json(); } catch { return; }
+  if (!data || typeof data !== 'object' || !data.bots || !data.floors) return;
+  document.documentElement.dataset.gate = 'open';
+  await loadOffice();
+  state = withChairman(data);
+  render();
+  setTimeout(poll, POLL_MS);
+}
 
 async function poll() {
   try {
@@ -100,42 +153,32 @@ async function poll() {
     if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
     if (!data.unchanged) { state = withChairman(data); render(); }
   } catch {
-    if (!state) await startLocalDemo();
-    if (state?.demoLocal) return;          // static preview: no server, stop polling
+    // A missed poll keeps the last state. The bundled sample roster is never the fallback.
   }
-  setTimeout(poll, POLL_MS);
+  if (state && !state.demoLocal) setTimeout(poll, POLL_MS);
 }
 
-// ---------- the user's own bots: #<topic> ----------
-
-const { feedFromLink } = await import('./lib/feedbase.js');
-const channelKey = 'bothq.channel';
-let channel = null;
-if (params.get('demo') !== '1') {
-  if (feedFromLink(location)) {
-    const search = new URLSearchParams();
-    if (params.has('feed')) search.set('feed', params.get('feed'));
-    channel = { hash: location.hash, search: search.toString() };
-    try { localStorage.setItem(channelKey, JSON.stringify(channel)); } catch {}
-  } else if (!location.hash && !params.has('feed')) {
-    try {
-      const saved = JSON.parse(localStorage.getItem(channelKey));
-      if (saved && typeof saved.hash === 'string' && typeof saved.search === 'string' && feedFromLink(saved)) channel = saved;
-    } catch {}
-  }
-}
-
-addEventListener('hashchange', () => location.reload());
-if (channel) {
+async function openFeed(channel) {
   const { feedFromHash, connectFeed } = await import('./feed.js');
-  connectFeed(feedFromHash(channel.hash, channel.search), (data) => { state = withChairman(data); render(); });
-} else if (params.get('demo') === '1') {
-  startLocalDemo();
-} else {
-  poll();
+  const feed = feedFromHash(channel.hash, channel.search ? `?${channel.search}` : '');
+  if (!feed) {
+    document.documentElement.dataset.gate = 'locked';
+    return;
+  }
+  const ready = loadOffice();
+  connectFeed(feed, (data) => {
+    state = withChairman(data);
+    ready.then(() => { if (renderScene) render(); }, () => {});
+  });
+  await ready;
 }
 
-// ---------- static preview: local simulation ----------
+async function openDemo() {
+  await loadOffice();
+  await startLocalDemo();
+}
+
+// ---------- local preview: ?demo=1 ----------
 
 async function startLocalDemo() {
   const res = await fetch('./data/demo-state.json', { cache: 'no-store' });

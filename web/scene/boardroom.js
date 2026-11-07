@@ -1,6 +1,5 @@
 // The chairman floor only. The shared floor_open template stays the departmental office; this group is hidden
-// until that floor is the open one. Semicircle opens toward +z (the entrance). The rear-right of the template
-// is the lounge and the coffee bar — hidden here and left as open floor, not a glass side office.
+// until that floor is the open one. It uses the shared baked floor with the departmental furniture hidden.
 import * as THREE from 'three';
 import { arcPoint, boardroomLayout } from '../lib/executive.js';
 
@@ -11,15 +10,6 @@ export function buildBoardroom(open) {
   const g = new THREE.Group();
   g.name = 'boardroom';
   g.visible = false;
-
-  // The baked floor still carries the departmental desks. Cover the interior so this room reads as one clear space.
-  const plaster = new THREE.Mesh(
-    new THREE.PlaneGeometry(14.6, 10.6).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: 0xE6E1D8 }),
-  );
-  plaster.name = 'boardroom_floor';
-  plaster.position.set(-0.2, 0.006, -0.15);
-  g.add(plaster);
 
   const oak = mat(0xD9C39F, 0.62);
   const black = mat(0x1C1C1E, 0.45, 0.25);
@@ -45,7 +35,7 @@ export function buildBoardroom(open) {
   const desk = new THREE.Mesh(deskGeo, oak);
   desk.name = 'boardroom_desk';
   desk.position.set(cx, 0.694, cz);
-  desk.rotation.y = Math.PI / 2;                         // the built arc opens +z; turn it toward the door (+x)
+  desk.rotation.y = Math.PI / 2;                         // the built arc opens +z; turn it toward the open aisle (+x)
   g.add(desk);
 
   const legGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.66, 14);
@@ -81,21 +71,6 @@ export function buildBoardroom(open) {
     cable.position.set(x, 2.42, z);
     g.add(shade, cable);
   }
-
-  // Entrance: a solid doorway on the right, opening onto the clear path. No glass in it.
-  const door = pose.entrance;
-  const gap = 1.05;
-  const pierGeo = new THREE.BoxGeometry(0.16, 2.32, 0.4);
-  for (const s of [-1, 1]) {
-    const pier = new THREE.Mesh(pierGeo, white);
-    pier.position.set(door.x, 1.16, door.z + s * (gap / 2 + 0.2));
-    g.add(pier);
-  }
-  const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, gap + 0.8), white);
-  lintel.position.set(door.x, 2.27, door.z);
-  const thresh = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.018, gap), oak);
-  thresh.position.set(door.x, 0.01, door.z);
-  g.add(lintel, thresh);
 
   // Storage and a plant against the walls. The rear-right stays empty floor.
   const side = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.72, 2.3), white);

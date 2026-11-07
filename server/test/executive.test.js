@@ -178,7 +178,7 @@ test('the semicircle opens toward the entrance, staff face the chairman, the fou
     assert.ok(facing(s, pose.chairman) > 0.99, 'each chair faces the chairman');
   }
   assert.ok(pose.chairman.x < pose.cx);
-  assert.ok(pose.entrance.x > pose.mouth.x && pose.mouth.x > pose.cx, 'the door is beyond the opening');
+  assert.ok(pose.entrance.x > pose.mouth.x && pose.mouth.x > pose.cx, 'the aisle starts beyond the opening');
   assert.ok(facing(pose.chairman, {
     x: pose.staff.reduce((s, p) => s + p.x, 0) / 4,
     z: pose.staff.reduce((s, p) => s + p.z, 0) / 4,
@@ -186,7 +186,7 @@ test('the semicircle opens toward the entrance, staff face the chairman, the fou
   const step = [];
   for (let i = 1; i < 4; i++) step.push(Math.hypot(pose.staff[i].x - pose.staff[i - 1].x, pose.staff[i].z - pose.staff[i - 1].z));
   assert.ok(Math.max(...step) - Math.min(...step) < 0.02, 'four seats are evenly spaced');
-  // The walk from the door to the opening does not cross a chair.
+  // The walk down the aisle to the opening does not cross a chair.
   for (const s of [pose.chairman, ...pose.staff]) {
     const dx = pose.mouth.x - pose.entrance.x, dz = pose.mouth.z - pose.entrance.z;
     const t = Math.max(0, Math.min(1, ((s.x - pose.entrance.x) * dx + (s.z - pose.entrance.z) * dz) / (dx * dx + dz * dz)));

@@ -11,8 +11,8 @@ export const CHAIRMAN_NAME = '董事长（Boss KJ）';
 // the roster bots are dressed in.
 export const CHAIRMAN_LOOK = { shape: 'rounded_cube', color: '#3D4F6F', accessory: 'glasses' };
 
-// Semicircular board table. The arc bulges toward the left wall (−x) and the opening faces +x, where the
-// door is. The chairman sits alone inside the arc, facing the staff. Four staff chairs are fixed on the
+// Semicircular board table. The arc bulges toward the left wall (−x) and the opening faces the aisle (+x).
+// The chairman sits alone inside the arc, facing the staff. Four staff chairs are fixed on the
 // outside of the arc, evenly spaced, facing him. A missing person leaves that chair empty.
 export const STAFF_SEATS = 4;
 const BOARD = {
@@ -71,7 +71,7 @@ export function boardroomLayout() {
     ...BOARD,
     chairman,
     staff,
-    // The door is on the right, in line with the opening, so the walk in is a straight empty path.
+    // The aisle runs from the right side of the floor to the opening.
     entrance: { x: 6.85, z: cz },
     mouth: { x: cx + 1.35, z: cz },
   };

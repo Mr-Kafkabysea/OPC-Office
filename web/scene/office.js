@@ -49,21 +49,21 @@ export async function loadOfficeAssets(baseUrl) {
     console.warn('[office] floor_open has fewer than 20 desk_NN empties: using placeholder floor_open');
     const p = ph || buildPlaceholder();
     templates.floor_open = p.templates.floor_open;
-    return finish(templates, collectSpots(templates.floor_open), p.nightMaps, 'placeholder');
+    return finish(templates, collectSpots(templates.floor_open), p.nightMaps, 'placeholder', baseUrl);
   }
-  return finish(templates, spots, ph ? ph.nightMaps : new Map(), glb ? (missing.length ? 'glb+placeholder' : 'glb') : 'placeholder');
+  return finish(templates, spots, ph ? ph.nightMaps : new Map(), glb ? (missing.length ? 'glb+placeholder' : 'glb') : 'placeholder', baseUrl);
 }
 
 // Per-floor accent + lounge corners (floorstyle.js) are added to the template here, after the spots are read. They need
 // the GLB lounge; the placeholder floor keeps one look (style = null).
-function finish(templates, spots, nightMaps, source) {
+async function finish(templates, spots, nightMaps, source, baseUrl) {
   let style = null;
   try {
     if (new URLSearchParams(location.search).get('floorstyle') !== '0') style = buildFloorStyles(templates.floor_open, spots.lounges);   // test switch: ?floorstyle=0
   } catch (err) {
     console.warn('[office] floor styles skipped:', err.message);
   }
-  try { buildBoardroom(templates.floor_open); }
+  try { await buildBoardroom(templates.floor_open, baseUrl); }
   catch (err) { console.warn('[office] chairman floor skipped:', err.message); }
   return { templates, spots, nightMaps, source, style };
 }

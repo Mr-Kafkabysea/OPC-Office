@@ -1,15 +1,33 @@
 // The chairman floor only. The shared floor_open template stays the departmental office; this group is hidden
-// until that floor is the open one. It uses the shared baked floor with the departmental furniture hidden.
+// until that floor is the open one. It uses the shared floor geometry with lightmaps baked without department furniture.
 import * as THREE from 'three';
 import { arcPoint, boardroomLayout } from '../lib/executive.js';
 
 const HIDE = /^(table_\d+|poufs|laptops|laptop_screen_\d+|mugs|sofa|armchair_\d+|coffee_table|coffee_bar|bar_stools|pendants|tree_\d+)$/;
+const FLOOR_NAME = 'baked_chairman_floor';
 
-export function buildBoardroom(open) {
+export async function buildBoardroom(open, baseUrl) {
   if (!open || open.getObjectByName('boardroom')) return;
   const g = new THREE.Group();
   g.name = 'boardroom';
   g.visible = false;
+
+  const sharedFloor = open.getObjectByName('baked_floor');
+  if (sharedFloor?.isMesh) {
+    const floor = sharedFloor.clone(false);
+    floor.name = floor.userData.bakedName = FLOOR_NAME;
+    const map = await new THREE.TextureLoader().loadAsync(`${baseUrl}/${FLOOR_NAME}.jpg`).catch(() => {
+      // A missing asset should not bring the departmental furniture shadows back.
+      return new THREE.DataTexture(new Uint8Array([220, 216, 208, 255]), 1, 1);
+    });
+    map.flipY = false;
+    map.colorSpace = THREE.SRGBColorSpace;
+    map.anisotropy = 8;
+    map.needsUpdate = true;
+    floor.material = sharedFloor.material.clone();
+    floor.material.map = map;
+    g.add(floor);
+  }
 
   const oak = mat(0xD9C39F, 0.62);
   const black = mat(0x1C1C1E, 0.45, 0.25);
@@ -95,10 +113,11 @@ export function setBoardroom(root, on) {
   if (!root) return;
   const rig = root.getObjectByName('boardroom');
   if (rig) rig.visible = !!on;
+  const hasFloor = rig?.getObjectByName(FLOOR_NAME);
   root.traverse((o) => {
     if (!o.name || o === rig || under(o, rig)) return;
     if (/^style_/.test(o.name)) { if (on) o.visible = false; return; }
-    if (HIDE.test(o.name)) o.visible = !on;
+    if (HIDE.test(o.name) || (hasFloor && o.name === 'baked_floor')) o.visible = !on;
   });
 }
 

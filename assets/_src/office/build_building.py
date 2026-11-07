@@ -1,8 +1,9 @@
 # Bot HQ v2 building generator: floor_open / floor_closed / roof / elevator_shaft / elevator_cabin -> assets/office/office.glb
-#   blender -b --factory-startup -P build_building.py -- [quick] [nopreview] [preview]
+#   blender -b --factory-startup -P build_building.py -- [quick] [nopreview] [preview] [chairman-floor]
 #     quick     low-sample bake / small textures (geometry iteration)
 #     nopreview skip the preview renders
 #     preview   only re-render previews from the existing GLB + night JPGs
+#     chairman-floor   only bake the boardroom's day and night floor textures
 # Output: assets/office/office.glb (day lightmaps embedded), assets/office/night/<baked mesh>.jpg,
 #         assets/office/preview-day.png, preview-night.png (+ preview-stack-*.png for the closed floors / roof / elevator).
 # All helpers take CONTRACT coordinates (glTF Y-up, +z toward the camera); see docs/CONTRACT.md v2.4.
@@ -579,7 +580,7 @@ def setup_night():
     set_emission('night_lamp', 0.0)           # the bulbs are represented by the point lights
 
 
-def stone_albedo(W, H):
+def stone_albedo(W, H, with_rug=True):
     rng = np.random.default_rng(5)
     base = bo.lin_of(COLORS['floorstone'])
     n = bo.blur2(rng.standard_normal((H // 8, W // 8, 1)).astype(np.float32), 5)[..., 0]
@@ -594,6 +595,8 @@ def stone_albedo(W, H):
     joint = np.minimum(jx[None, :], jz[:, None])
     line = 1.0 - 0.045 * np.clip(1.0 - joint / 0.004, 0, 1)
     img = base[None, None, :] * (var * line)[..., None]
+    if not with_rug:
+        return img.astype(np.float32)
     # round rug (centre 5.3, 2.3; r 2.2): slightly darker, cooler wool, soft edge, one fine inner ring
     rc = bo.lin_of(COLORS['rug'])
     d = np.hypot(x[None, :] - (5.3 + 8.0), z[:, None] - (2.3 + 6.0))      # x, z here are floor-local (0..16, 0..12)
@@ -989,6 +992,32 @@ def render_previews():
 
 
 # ------------------------------------------------------------------ MAIN
+def bake_chairman_floor():
+    reset_scene()
+    bo.setup_cycles(64)
+    bpy.context.scene.view_settings.view_transform = 'Standard'
+    make_materials()
+    root = new_root('floor_open')
+    floor, wall, slab_top = build_open(root)
+    structure = {
+        'baked_floor', 'baked_wall_left', 'baked_slab_top', 'slab_open', 'wall_left_core',
+        'curtain_wall', 'glass_back', 'wall_frames', 'wall_screen', 'task_board',
+    }
+    for obj in bpy.context.scene.objects:
+        if obj.type == 'MESH' and obj.name not in structure:
+            obj.hide_render = True
+    bo.make_bake_material(wall, COLORS['wall'])
+    bo.make_bake_material(slab_top, COLORS['slab'])
+    size = (1536, 1152)
+    baked = [
+        (floor, COLORS['floorstone'], lambda w, h: stone_albedo(w, h, with_rug=False),
+         (384, 288), size, size, 1.22),
+    ]
+    maps = run_bakes(baked, quick=False)['baked_floor']
+    shutil.copyfile(maps['day'], os.path.join(OUT, 'baked_chairman_floor.jpg'))
+    shutil.copyfile(maps['night'], os.path.join(NIGHT, 'baked_chairman_floor.jpg'))
+
+
 def main():
     t0 = time.time()
     reset_scene()
@@ -1035,5 +1064,7 @@ if any(a.startswith('close=') for a in ARGV):
     render_close()
 elif 'preview' in ARGV:
     render_previews()
+elif 'chairman-floor' in ARGV:
+    bake_chairman_floor()
 else:
     main()

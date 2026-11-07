@@ -5,8 +5,7 @@
 #
 # Env: BOTHQ_PORT (8787)  BOTHQ_HOST (127.0.0.1)  BOTHQ_JOURNAL  BOTHQ_PASSWORD  BOTHQ_TZ
 #      BOTHQ_TUNNEL=1  also start `cloudflared` and publish its https URL in data/tunnel-url.txt
-# The last lines printed are the wallpaper links for Lively Wallpaper: …/face/?key=<data/view-key.txt> (Grok Bot face)
-# and …/?mode=wallpaper&key=… (the office).
+# The last line is the dashboard URL, with a view-only key when available.
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -115,7 +114,7 @@ if [ "${BOTHQ_TUNNEL:-0}" = "1" ]; then
   fi
 fi
 
-# ---------- wallpaper link (Lively Wallpaper): the view-only key signs the browser in, no password to type ----------
+# ---------- dashboard link ----------
 base="$url"
 if [ "${BOTHQ_TUNNEL:-0}" = "1" ] && [ -s "$TUNNEL_URL_FILE" ] && alive "$(cat "$TUNNEL_PID" 2>/dev/null)"; then
   base="$(tr -d '[:space:]' < "$TUNNEL_URL_FILE")"      # the https tunnel address, only while the tunnel process is alive
@@ -123,9 +122,8 @@ fi
 vkey=""
 [ -s "$DATA/view-key.txt" ] && vkey="$(tr -d '[:space:]' < "$DATA/view-key.txt")"
 if [ -n "$vkey" ]; then
-  echo "Ссылка для обоев (офис): $base/?mode=wallpaper&key=$vkey"
-  echo "Ссылка для обоев (Grok Bot): $base/face/?key=$vkey"
+  echo "Dashboard: $base/?key=$vkey"
 else
-  echo "Ссылка для обоев: $base/?mode=wallpaper  (ключа нет: data/view-key.txt создаётся при старте сервера; перезапусти ./stop.sh && ./start.sh)"
+  echo "Dashboard: $base/"
 fi
 exit 0

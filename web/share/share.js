@@ -2,7 +2,7 @@
 // loads this module on first use and calls toggleShare().
 //
 // The image: the current floor with its bots, framed like a product shot on the white studio (scene.js captureScene),
-// a caption under it: the brand mark and "Grok Bot Dashboard" on the left, one quiet line of numbers on the right.
+// a caption under it: the brand mark and "OPC Office" on the left, one quiet line of numbers on the right.
 // Nothing private: no tags, names, steps or tasks (captureScene keeps them out of the frame), no topic, no link.
 //
 // The card: a graphite surface under the button with the preview and the actions.
@@ -63,7 +63,7 @@ function caption(g, mark, parts) {
   g.fillStyle = INK;
   g.font = `900 34px ${BRAND_FONT}`;
   track(g, -0.3);
-  g.fillText('Grok Bot Dashboard', mark ? m + s + 18 : m, cy + capHalf(g));
+  g.fillText('OPC Office', mark ? m + s + 18 : m, cy + capHalf(g));
 
   // "18 bots · 4 teams · ● 6 working now": the numbers in ink, the words in grey, right-aligned
   track(g, 0);
@@ -135,7 +135,7 @@ function fonts() {
   if (!document.fonts?.load) return Promise.resolve();
   const want = [`900 34px ${BRAND_FONT}`, `500 26px ${TEXT_FONT}`, `650 26px ${TEXT_FONT}`];
   return Promise.race([
-    Promise.all(want.map((f) => document.fonts.load(f, 'Grok Bot Dashboard 0123456789 teams working now'))),
+    Promise.all(want.map((f) => document.fonts.load(f, 'OPC Office 0123456789 teams working now'))),
     new Promise((r) => setTimeout(r, 2000)),
   ]).catch(() => {});
 }

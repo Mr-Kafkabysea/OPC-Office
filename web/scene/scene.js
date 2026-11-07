@@ -16,8 +16,7 @@ import { sofiaHour, fontsPromise } from './walls.js';
 import { executiveSeats, isChairmanFloor } from '../lib/executive.js';
 
 // Relative to the page (not the site root), so the office also works when it is published in a sub-folder, e.g.
-// https://bodila51.github.io/grokbot-wallpaper/office/ -> ../assets. Locally the page is at `/`, where this is /assets.
-const ASSETS = '../assets';
+const ASSETS = './assets';
 const ISO_DIR = new THREE.Vector3(1, 1, 1).normalize();
 const HOME = { x: -0.4, y: -0.3, z: 0.3 };             // camera target relative to the active floor's surface
 const VIEW_SPAN = { w: 35, h: 22 };                 // meters visible at zoom 1 (the stack + the white air around it)
@@ -53,15 +52,9 @@ let introDone = false, switchedAt = 0, nowSec = 0, settledOnce = false;
 let loadingEl = null;
 // Debug/test switches: ?floor=<id> forces the active floor, ?from=<id> starts there first, ?intro=0 skips the load
 // animation, ?hold=<s> fast-forwards that long after the (last) switch and freezes time, ?cam=x,z,zoom snaps the camera.
-// Wallpaper mode (?mode=wallpaper, for Lively): no panel offset, hover only (no pan / zoom / select), <= 30 fps, no
-// in-scene tags unless &tags=1. app.js owns ?floor= there (pin / cycle), so the scene's own debug switch is off.
-const WALLPAPER = new URLSearchParams(location.search).get('mode') === 'wallpaper';
-const WALLPAPER_TAGS = new URLSearchParams(location.search).get('tags') === '1';
-const WALLPAPER_FRAME_MS = 1000 / 30;
-const WALLPAPER_FRAMING = 0.9;                        // < 1 = closer: the side panels' space is not needed, so the tower fills more
 const TEST = (() => {
   const q = new URLSearchParams(location.search);
-  return { floor: WALLPAPER ? null : q.get('floor'), from: q.get('from'), intro: q.get('intro'), hold: q.has('hold') ? Number(q.get('hold')) : null, cam: q.get('cam'), cursor: q.get('cursor') };
+  return { floor: q.get('floor'), from: q.get('from'), intro: q.get('intro'), hold: q.has('hold') ? Number(q.get('hold')) : null, cam: q.get('cam'), cursor: q.get('cursor') };
 })();
 let frozen = false, pinCursor = false;
 
@@ -342,12 +335,12 @@ function resize() {
   post?.setSize(w, h);
   const aspect = w / h;
   // phones (the UI's <= 900 px layout) have no side panels to keep clear: the floor fills the width, bots read bigger
-  const spanW = WALLPAPER ? VIEW_SPAN.w : VIEW_SPAN.w + (PHONE_SPAN_W - VIEW_SPAN.w) * (1 - clamp((w - 560) / 340, 0, 1));
-  const halfH = Math.max(VIEW_SPAN.h, spanW / aspect) / 2 * (WALLPAPER ? WALLPAPER_FRAMING : 1);
+  const spanW = VIEW_SPAN.w + (PHONE_SPAN_W - VIEW_SPAN.w) * (1 - clamp((w - 560) / 340, 0, 1));
+  const halfH = Math.max(VIEW_SPAN.h, spanW / aspect) / 2;
   camera.left = -halfH * aspect; camera.right = halfH * aspect;
   camera.top = halfH; camera.bottom = -halfH;
   // keep the building clear of the glass panels: shift the view so its centre is the free space between them
-  const shift = WALLPAPER ? 0 : clamp((w - 900) / 600, 0, 1) * (UI_RIGHT - UI_LEFT) / 2;   // wallpaper: no panels, centred
+  const shift = clamp((w - 900) / 600, 0, 1) * (UI_RIGHT - UI_LEFT) / 2;
   if (shift > 0.5) camera.setViewOffset(w, h, shift, 0, w, h); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
 }
@@ -360,7 +353,6 @@ function addPointerHandlers() {
   const el = renderer.domElement;
   el.addEventListener('pointermove', onMove);
   el.addEventListener('pointerleave', () => { cursor.active = false; setHover(null); });
-  if (WALLPAPER) return;                              // a desktop background: bots follow the cursor, nothing else
   el.addEventListener('pointerdown', onDown);
   el.addEventListener('pointerup', onUp);
   el.addEventListener('pointercancel', (e) => { touches.delete(e.pointerId); drag = null; pinch = null; });
@@ -601,16 +593,8 @@ function updateCursorGround() {
 
 const focusV = new THREE.Vector3();
 
-let lastDraw = 0;
-
-function frame(t) {
+function frame() {
   if (document.hidden) { clock.getDelta(); return; }       // no work in a background tab
-  if (WALLPAPER) {                                          // <= 30 fps: skip the in-between vsyncs; dt keeps real time
-    const since = t - lastDraw;
-    if (since < WALLPAPER_FRAME_MS - 2) return;
-    lastDraw += Math.max(1, Math.round(since / WALLPAPER_FRAME_MS)) * WALLPAPER_FRAME_MS;  // stay on the 33 ms grid (100+ Hz displays)
-    if (t - lastDraw > WALLPAPER_FRAME_MS / 2) lastDraw = t;                                // fell behind (hidden, hitch): resync, no bursts
-  }
   const dt = frozen ? 0 : Math.min(clock.getDelta(), 0.05);
   if (frozen) clock.getDelta();
   nowSec = clock.elapsedTime;
@@ -635,5 +619,5 @@ function frame(t) {
     focusV.set(0, (building ? building.cabinY.x : 0) + 0.7, 0).project(camera);
     post.render(clamp(focusV.y * 0.5 + 0.5, 0, 1), dt, clamp(1.5 / camera.zoom, 0.25, 1));
   } else renderer.render(scene, camera);
-  if (!WALLPAPER || WALLPAPER_TAGS) labels.render(scene, camera);
+  labels.render(scene, camera);
 }

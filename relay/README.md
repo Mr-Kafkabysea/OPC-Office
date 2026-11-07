@@ -114,8 +114,6 @@ means the IP is shared.
 2. Apply `feed.patch` to `web/feed.js` (see `feed-patch.md`) and publish the site (done in 55ecf77). From then on every dashboard link
    `#<topic>` reads both ntfy.sh and the relay. Nobody has to change anything; old users keep working on ntfy.sh.
 3. Post `PROMPT-relay.md` as the new prompt: the same text, only the FEED host in step 1 changed.
-4. For old users who hit ntfy's limit: post the text in `UPGRADE.md`. It keeps their topic, so their dashboard link and
-   Lively wallpaper stay as they are.
-5. Before the new prompt goes out, `landing/index.html` (the "did your bot post yet" check) and `web/face/face.js` must
-   read the relay too; they read only ntfy.sh today.
+4. For old users who hit ntfy's limit: post the text in `UPGRADE.md`. It keeps their topic, so their dashboard link stays the same.
+5. If needed, verify the dashboard can read the relay after deployment.
 6. If more than ~250 people use it daily, switch the Cloudflare account to Workers Paid before the free cap hits.

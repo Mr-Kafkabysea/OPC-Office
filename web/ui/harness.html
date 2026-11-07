@@ -14,7 +14,7 @@
     /*
      * The UI over a stand-in for the 3D office (the real scene is edited elsewhere), with a fake state injected.
      * Test URLs:
-     *   ?bg=white (default: a white page, soft dark aura) | scene (the real office, wallpaper mode, in an iframe) | dark
+     *   ?bg=white (default: a white page, soft dark aura) | scene (the real office in an iframe) | dark
      *   ?sel=<bot id>|none   ?floor=<floor id>   ?live=0 (freeze data)   ?shot (hide the dev bar)
      *   ?open=all|none|waiting,finished,routines   (dock cards)   ?blur=1 (the eye on)
      *   ?fin=0 / ?routines=0 (drop those fields, as in the local-server mode; =empty gives empty lists)   ?calm=1 (nobody waits)   ?usage=0 (no usage report, as in bots-only mode)
@@ -72,7 +72,7 @@
     document.body.dataset.bg = bg;
     if (bg === 'scene') {
       const f = document.createElement('iframe');
-      f.src = '../index.html?mode=wallpaper';
+      f.src = '../index.html?demo=1';
       f.addEventListener('load', () => { try { const st = f.contentDocument.createElement('style'); st.textContent = '.wp-status{display:none!important}'; f.contentDocument.head.append(st); } catch {} });
       document.querySelector('#scene .plate').append(f);
     }

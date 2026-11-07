@@ -56,7 +56,7 @@ export function loadCredentials({ dataDir, env = process.env }) {
 }
 
 /**
- * View-only key for wallpaper links (Lively cannot type a password): data/view-key.txt, random hex, generated once.
+ * View-only key for dashboard links: data/view-key.txt, random hex, generated once.
  * A request for any page with ?key=<this key> gets the normal session cookie (see Auth.checkViewKey + server.js).
  * Anything already in the file that is shorter than 32 chars or not URL-safe is replaced.
  */
@@ -95,7 +95,7 @@ export class Auth {
     return crypto.timingSafeEqual(sha(String(input ?? '').trim()), this.pwDigest);
   }
 
-  /** Constant-time check of a wallpaper view key (digests, so length differences do not leak either). */
+  /** Constant-time check of a dashboard view key (digests, so length differences do not leak either). */
   checkViewKey(input) {
     if (!this.viewDigest || typeof input !== 'string' || !input) return false;
     return crypto.timingSafeEqual(sha(input.trim()), this.viewDigest);

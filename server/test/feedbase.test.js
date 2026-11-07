@@ -34,7 +34,9 @@ test('prompts: the posted one feeds ntfy.sh (FEED_BASE), the current one our rel
   assert.ok(statusRule(current), 'relay/PROMPT-relay.md has the STATUS RULE line');
   assert.equal(statusRule(read('relay/RELIABLE.md')), statusRule(current), 'relay/RELIABLE.md writes the same rule');
   assert.equal(statusRule(read('PROMPT.md')), statusRule(current), 'PROMPT.md writes the same rule into each bot');
-  assert.equal(/const FEED_BASE = '([^']+)'/.exec(read('web/face/face.js'))?.[1], FEED_BASE, 'the wallpaper keeps a copy of FEED_BASE');
+  for (const prompt of [read('PROMPT.md'), current]) {
+    assert.ok(prompt.includes('https://mr-kafkabysea.github.io/OPC-Office/#'), 'setup links open the dashboard root');
+  }
 });
 
 const T0 = Date.parse('2026-11-02T09:00:00+02:00');

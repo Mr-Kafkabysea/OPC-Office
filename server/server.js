@@ -59,7 +59,7 @@ const HELP = `Bot HQ server
   --no-auth      disable the password gate (only with --host 127.0.0.1)
   --tz ZONE      timezone for timestamps and "today" (default Europe/Sofia)
   --data-dir D   config/credentials directory (default ./data)
-  --no-cache     revalidate /assets/ on every load too (a local wallpaper shows edited images after a reload)
+  --no-cache     revalidate /assets/ on every load too (the dashboard shows edited images after a reload)
 Env: BOTHQ_PASSWORD, BOTHQ_PORT, BOTHQ_HOST, BOTHQ_JOURNAL, BOTHQ_TZ
 `;
 
@@ -252,7 +252,7 @@ export function createApp(opts = {}) {
     return redirect(res, 303, next, { 'Set-Cookie': sessionCookie(auth.issue(), { secure }) });
   }
 
-  // ---------- view-only key (wallpaper links) ----------
+  // ---------- view-only key (dashboard links) ----------
 
   /** The query string without any `key=` pair; every other pair stays byte-for-byte as the client sent it. */
   function queryWithoutKey(search) {
@@ -373,7 +373,7 @@ async function main() {
   console.log(`Bot HQ listening on http://${shown}:${addr.port}`);
   console.log(`journal: ${app.journalPath}`);
   console.log(`auth: ${args.noAuth ? 'OFF (loopback only)' : `on, password from ${app.creds.source}`}`);
-  if (app.viewKey) console.log(`wallpaper view key: ${path.join(dataDir, 'view-key.txt')}`);
+  if (app.viewKey) console.log(`dashboard view key: ${path.join(dataDir, 'view-key.txt')}`);
   if (app.creds?.generated) {
     console.log('----------------------------------------------');
     console.log(`NEW PASSWORD (saved to ${path.join(dataDir, 'password.txt')}): ${app.creds.password}`);

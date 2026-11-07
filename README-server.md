@@ -17,8 +17,7 @@ node server/server.js --dev      # http://127.0.0.1:8787
 ```
 
 `start.sh` writes `data/server.pid`, logs to `data/server.log`, and forwards extra arguments to the server
-(`./start.sh --dev`). On the first start it prints the generated password. Its last line is the wallpaper link
-(`<tunnel URL if any, else local URL>/?mode=wallpaper&key=<view key>`), see `docs/WALLPAPER.md`.
+(`./start.sh --dev`). On the first start it prints the generated password. Its last line is the dashboard link, including a view-only key when authentication is enabled.
 
 ### Flags
 
@@ -63,7 +62,7 @@ server/demo.js     demo event generator for the 15 demo bots
 server/test/       node:test suites
 data/              runtime only, never commit:
   events.jsonl       dev journal          password.txt   generated once (or env BOTHQ_PASSWORD)
-  view-key.txt       wallpaper view-only key, generated once (48 hex chars); delete it + restart to rotate
+  view-key.txt       dashboard view-only key, generated once (48 hex chars); delete it + restart to rotate
   secret.key         cookie HMAC secret   server.pid / server.log / tunnel.pid / tunnel.log / tunnel-url.txt
   floors.json        optional floor mapping     bots.json   optional per-bot overrides
 ```
@@ -109,9 +108,9 @@ changing the password logs everyone out. Login is limited to 6 failures per 10 m
 (behind the tunnel the IP comes from `cf-connecting-ip`). Dotfiles and anything outside `web/` / `assets/`
 are never served. Keep the server on `127.0.0.1` and publish it only through the tunnel.
 
-### View-only key (wallpaper links)
+### View-only key
 
-Lively Wallpaper cannot type a password, so `data/view-key.txt` holds a random key (at least 32 chars, generated on
+`data/view-key.txt` holds a random key (at least 32 chars, generated on
 the first start with auth on). Opening any page with `?key=<key>` signs the browser in exactly like the login form
 (same HttpOnly session cookie, 30 days; `Secure` behind the https tunnel) and redirects to the same URL without the
 key, so it does not stay in the address bar. The comparison is constant-time. The key opens the dashboard

@@ -1,8 +1,4 @@
-# Publishes the Grok Bot wallpaper site to GitHub Pages on every push to main:
-# https://bodila51.github.io/grokbot-wallpaper/        the landing page (landing/), with the live wallpaper in it
-# https://bodila51.github.io/grokbot-wallpaper/face/   the wallpaper itself with its demo data (installed wallpapers
-# point here and pick up every change by themselves). landing/assemble.mjs lists what goes out (no journal, keys or
-# source art); the same tree is deployed to https://0xcodila.com/grokbot-wallpaper/, the landing's main address.
+# Publishes the OPC Office dashboard at the GitHub Pages site root.
 name: Pages
 on:
   push:
@@ -24,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Assemble the site
-        run: node landing/assemble.mjs _site
+        run: node scripts/build-pages.mjs _site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
       - id: deployment

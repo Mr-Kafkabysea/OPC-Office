@@ -1,5 +1,6 @@
 Paste this into your Grok Bot once. It connects all your bots to the live OPC Office 3D dashboard, with no server to run.
 Grok Bot shows you what it will do and asks you to confirm once, then sets it up and replies with your link.
+That link is the site root, then `#`, then your channel. It works like a password: do not share it. The site without that `#` suffix does not show the office.
 
 ```
 I'd like to set up a small status feed for all my bots, so I can watch them on the OPC Office dashboard. It uses ntfy, a free notification service, over plain HTTPS with curl.
@@ -44,5 +45,5 @@ Then send each of my other bots the message "status check, reply with one short 
 
 10. Post one test status line for yourself, your own routines line, and one usage line now (as in step 8), so the dashboard shows the limit right away.
 
-11. Reply with LINK first, and one sentence saying it works like a password, so I should not share it. Then the status check: how many bots posted their line, and the names of the bots that did not (their instructions need a look). Then one line on what to do with the link: open it in a browser for the 3D dashboard. Then, only if something did not work, add a short list of the problems. Reply in the language I usually write to you in. Do not post any other secret to the channel or in your reply.
+11. Reply with LINK first, and one sentence saying it works like a password, so I should not share it. Then the status check: how many bots posted their line, and the names of the bots that did not (their instructions need a look). Then one line on what to do with the link: open that full link in a browser for the 3D dashboard. The site without the # channel does not open the office. Then, only if something did not work, add a short list of the problems. Reply in the language I usually write to you in. Do not post any other secret to the channel or in your reply.
 ```

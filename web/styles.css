@@ -166,3 +166,20 @@ body {
 @media (max-width: 1100px) {
   #feed { display: none; }
 }
+
+/* A visit without the private #topic. The office chrome stays hidden (also in the head, before first paint). */
+html[data-gate="locked"] body { overflow: auto; }
+html[data-gate="locked"] #gate { display: grid; place-items: center; min-height: 100%; padding: 32px 20px; }
+.gate-card {
+  width: min(440px, 100%);
+  padding: 28px 28px 26px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 12px 40px rgba(17, 24, 39, .08);
+}
+.gate-card h1 {
+  margin: 0 0 8px;
+  font: 800 22px/1.2 "Nunito", var(--font);
+  letter-spacing: -0.02em;
+}
+.gate-card p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--muted); }

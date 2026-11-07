@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { buildFloorStyles } from './floorstyle.js';
+import { buildBoardroom } from './boardroom.js';
 
 export const DESK_COUNT = 20;
 export const LOUNGE_COUNT = 6;
@@ -62,6 +63,8 @@ function finish(templates, spots, nightMaps, source) {
   } catch (err) {
     console.warn('[office] floor styles skipped:', err.message);
   }
+  try { buildBoardroom(templates.floor_open); }
+  catch (err) { console.warn('[office] chairman floor skipped:', err.message); }
   return { templates, spots, nightMaps, source, style };
 }
 

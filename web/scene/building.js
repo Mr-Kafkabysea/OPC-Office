@@ -9,6 +9,8 @@ import { Spring, smoothstep } from './spring.js';
 import { FLOOR_STEP, SLAB, SHAFT_POS } from './office.js';
 import { WallDisplays } from './walls.js';
 import { floorStyles, applyFloorStyle, styleObjects, styleNightMaps } from './floorstyle.js';
+import { setBoardroom } from './boardroom.js';
+import { isChairmanFloor } from '../lib/executive.js';
 
 const LIFT = 20;                        // how far upper floors slide up, out of the frame (m)
 const SWAP_AT = 0.14;                   // s after a switch starts: blur peak, open/closed swap
@@ -279,15 +281,18 @@ export class Building {
   // spots that move are new objects, so a seated bot walks over to its new seat (scene.js reads assets.spots.lounges).
   applyStyle(slot) {
     const st = this.styles.get(slot.id);
-    if (!st || !slot.open) return;
-    applyFloorStyle(slot.open.obj, st);
-    slot.open.walls?.setAccent(st.accent);
-    if (slot !== this.activeSlot) return;
-    const lounges = this.assets.spots.lounges;
-    this.assets.style.layouts[st.layout].forEach((s, i) => {
-      const cur = lounges[i];
-      if (!cur || cur.pos.distanceToSquared(s.pos) > 1e-6 || cur.yaw !== s.yaw) lounges[i] = { pos: s.pos.clone(), yaw: s.yaw, lounge: true };
-    });
+    if (st && slot.open) {
+      applyFloorStyle(slot.open.obj, st);
+      slot.open.walls?.setAccent(st.accent);
+      if (slot === this.activeSlot) {
+        const lounges = this.assets.spots.lounges;
+        this.assets.style.layouts[st.layout].forEach((s, i) => {
+          const cur = lounges[i];
+          if (!cur || cur.pos.distanceToSquared(s.pos) > 1e-6 || cur.yaw !== s.yaw) lounges[i] = { pos: s.pos.clone(), yaw: s.yaw, lounge: true };
+        });
+      }
+    }
+    if (slot.open) setBoardroom(slot.open.obj, isChairmanFloor(slot));
   }
 
   disposeSlot(s) {
@@ -368,7 +373,7 @@ export class Building {
     const all = [this.roof, this.shaft, this.cabin, ...this.slots.map((s) => s.closed), ...this.pool];
     const saved = all.map((i) => i.root.visible);
     all.forEach((i) => { i.root.visible = true; });
-    const hidden = this.pool.flatMap((p) => styleObjects(p.obj)).filter((o) => !o.visible);   // every lounge corner, so a switch never compiles
+    const hidden = this.pool.flatMap((p) => [...styleObjects(p.obj), p.obj.getObjectByName('boardroom')].filter(Boolean)).filter((o) => !o.visible);
     hidden.forEach((o) => { o.visible = true; });
     // The scene is drawn into the post chain's targets (linear, tone mapped later): compile for a target too, or every
     // program built here has the wrong output variant and the real one compiles mid-ride.

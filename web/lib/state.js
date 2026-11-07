@@ -1,6 +1,7 @@
 // State reducer: journal records -> CONTRACT §4 state. Pure in-memory, clock injectable for tests. Runs in Node (the
 // server) and in the browser (the office reading a bots channel on ntfy.sh), so: no Node-only APIs here.
 import { slugify, hashColor, cleanStr, makeTime, parseTime } from './util.js';
+import { CHAIRMAN_FLOOR_ID, CHAIRMAN_FLOOR_NAME, isChairmanFloorName } from './executive.js';
 
 export const LIMITS = {
   MAX_PER_FLOOR: 20,
@@ -421,6 +422,9 @@ export class StateStore {
   resolveFloor(raw) {
     const s = cleanStr(raw, 60);
     if (!s) return GENERAL;
+    // Named before the slug: a Chinese-only "董事长层" would otherwise collapse to the main floor, and the
+    // full name must not sit wherever first-seen order happens to put it.
+    if (isChairmanFloorName(s)) return { id: CHAIRMAN_FLOOR_ID, name: CHAIRMAN_FLOOR_NAME };
     const key = s.toLowerCase();
     for (const f of this.floorsCfg.floors) if (f.id.toLowerCase() === key || f.name.toLowerCase() === key) return f;
     for (const f of BUILTIN_FLOORS) if (f.id === key || f.name.toLowerCase() === key || f.aliases.includes(key)) return f;
@@ -465,7 +469,9 @@ export class StateStore {
     let g;
     let idx;
     const ci = this.floorsCfg.floors.findIndex((x) => x.id === f.baseId);
-    if (f.baseId === GENERAL.id) { g = 3; idx = 0; }
+    // Above every department and above the main floor. Order is bottom-up, so the highest rank is the top storey.
+    if (f.baseId === CHAIRMAN_FLOOR_ID || f.id === CHAIRMAN_FLOOR_ID) { g = 4; idx = 0; }
+    else if (f.baseId === GENERAL.id) { g = 3; idx = 0; }
     else if (ci >= 0) { g = 0; idx = ci; }
     else {
       const bi = BUILTIN_FLOORS.findIndex((x) => x.id === f.baseId);

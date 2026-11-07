@@ -13,6 +13,7 @@ import { Actor } from './actor.js';
 import { generateBlob } from './blobgen.js';
 import { Spring, clamp } from './spring.js';
 import { sofiaHour, fontsPromise } from './walls.js';
+import { executiveSeats, isChairmanFloor } from '../lib/executive.js';
 
 // Relative to the page (not the site root), so the office also works when it is published in a sub-folder, e.g.
 // https://bodila51.github.io/grokbot-wallpaper/office/ -> ../assets. Locally the page is at `/`, where this is /assets.
@@ -174,7 +175,11 @@ function sync() {
   for (const [id, actor] of actors) if (!ids.has(id)) { actor.retire(); retiring.add(actor); actors.delete(id); }
 
   const maxShare = Math.max(0.0001, ...floorBots.map((b) => b.usage_share || 0));
-  const lounge = assignLounge(floorBots);
+  const floor = floors.find((f) => f.id === building.activeId);
+  // Chairman's floor: he sits inside the semicircle, everyone grouped here takes the next outside chair.
+  // They stay in those seats (no lounge) so the arc reads as one meeting.
+  const meeting = isChairmanFloor(floor) ? executiveSeats(floorBots) : null;
+  const lounge = meeting ? new Map() : assignLounge(floorBots);
   const flags = new Array(20).fill(0);
   const delay = Math.max(0, switchedAt + 0.55 - nowSec);
   for (const bot of floorBots) {
@@ -184,13 +189,19 @@ function sync() {
       actors.set(bot.id, actor);
       attachModel(actor, bot);
     }
-    const deskIdx = (DESK_ORDER[(bot.desk || 1) - 1] || 1) - 1;
-    const desk = assets.spots.desks[deskIdx] || assets.spots.desks[0];
-    if ((bot.effective_status || bot.status) === 'working' && !lounge.has(bot.id)) flags[deskIdx] = 1;
-    actor.update(bot, lounge.get(bot.id) || desk, { maxShare, selectedBot: view.selectedBot });
+    const seat = meeting ? meeting.get(bot.id) : null;
+    let spot;
+    if (seat) {
+      spot = { pos: new THREE.Vector3(seat.x, seat.y, seat.z), yaw: seat.yaw };
+    } else {
+      const deskIdx = (DESK_ORDER[(bot.desk || 1) - 1] || 1) - 1;
+      const desk = assets.spots.desks[deskIdx] || assets.spots.desks[0];
+      if ((bot.effective_status || bot.status) === 'working' && !lounge.has(bot.id)) flags[deskIdx] = 1;
+      spot = lounge.get(bot.id) || desk;
+    }
+    actor.update(bot, spot, { maxShare, selectedBot: view.selectedBot });
   }
   building.setScreens(flags);
-  const floor = floors.find((f) => f.id === building.activeId);
   building.setDisplayData({ floorName: floor ? floor.name : '', bots: floorBots, hour: sofiaHour(state.now) });
   if (hoveredId && !actors.has(hoveredId)) hoveredId = null;
   if (!settledOnce) {

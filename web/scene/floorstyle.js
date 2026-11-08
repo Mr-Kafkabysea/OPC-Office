@@ -10,6 +10,7 @@
 // blurred sweep of each footprint along the sun offset, plus a tight contact shadow.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { bakedLoungeVisible } from '../lib/lounge-visibility.js';
 
 // Wool-and-ceramic colours (sRGB): sage, eucalyptus, slate, lilac, mauve, clay, ochre.
 export const ACCENTS = ['#9CAA93', '#86A4A1', '#8E9DB1', '#A49EB9', '#BB9CA6', '#C79F89', '#CDB27F'];
@@ -73,7 +74,7 @@ export function applyFloorStyle(obj, style) {
   if (!targets.has(obj)) targets.set(obj, collect(obj));
   const t = targets.get(obj);
   for (const [name, g] of t.layouts) g.visible = name === style.layout;
-  for (const o of t.glb) o.visible = style.layout === 'sofa';
+  for (const o of t.glb) o.visible = bakedLoungeVisible(style.layout, o.name);
   const c = new THREE.Color(style.accent);
   for (const m of t.mats) tint(m, m.userData.accent, c);
 }
@@ -250,6 +251,13 @@ function libraryCorner(k, g, ctx) {
   armchair(k, g, ctx, cx, cz, yaw);
   floorLamp(k, g, ctx, 7.38, 2.12);
   ottoman(k, g, ctx, 5.75, 3.72);
+  // The baked coffee table is hidden with the rest of the GLB lounge. This copy sits in the open middle of the rug:
+  // clear of the reading chair (6.7, 2.85), the ottoman and the lamp.
+  const table = k.open.getObjectByName('coffee_table').clone(true);
+  table.position.set(5.3, 0, 2.4);
+  table.rotation.set(0, 0, 0);
+  g.add(table);
+  ctx.shadows.push({ pts: circle(5.3, 2.4, 0.55, 18), y0: 0, y1: 0.38, core: 0.72, blur: 0.04 });
 
   // a small plant and a vase on the long run
   const plant = k.open.getObjectByName('tree_3').clone(true);

@@ -108,7 +108,8 @@ export async function buildBoardroom(open, baseUrl) {
   open.add(g);
 }
 
-/** Show the boardroom and hide the departmental furniture, or the reverse. Style corners are only forced off. */
+/** Show the boardroom and hide the departmental furniture, or the reverse. Style corners are only forced off.
+ *  Turning it off shows the baked lounge too; the caller applies the floor corner afterwards so that set can hide again. */
 export function setBoardroom(root, on) {
   if (!root) return;
   const rig = root.getObjectByName('boardroom');

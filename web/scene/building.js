@@ -10,6 +10,7 @@ import { FLOOR_STEP, SLAB, SHAFT_POS } from './office.js';
 import { WallDisplays } from './walls.js';
 import { floorStyles, applyFloorStyle, styleObjects, styleNightMaps } from './floorstyle.js';
 import { setBoardroom } from './boardroom.js';
+import { floorFurniturePlan } from '../lib/lounge-visibility.js';
 import { isChairmanFloor } from '../lib/executive.js';
 
 const LIFT = 20;                        // how far upper floors slide up, out of the frame (m)
@@ -279,9 +280,15 @@ export class Building {
 
   // The floor's accent + lounge corner on its open instance. For the active floor the lounge seats follow the corner:
   // spots that move are new objects, so a seated bot walks over to its new seat (scene.js reads assets.spots.lounges).
+  // The corner is applied after the boardroom toggle. Turning the boardroom off shows the baked lounge again, and the
+  // corner is what hides it on media, library and meeting floors. Doing it first left two chairs on one spot.
   applyStyle(slot) {
     const st = this.styles.get(slot.id);
-    if (st && slot.open) {
+    if (!slot.open) return;
+    for (const step of floorFurniturePlan(isChairmanFloor(slot))) {
+      if (step === 'boardroom-on' || step === 'boardroom-off') setBoardroom(slot.open.obj, step === 'boardroom-on');
+      if (step === 'boardroom-on' && st) slot.open.walls?.setAccent(st.accent);
+      if (step !== 'corner' || !st) continue;
       applyFloorStyle(slot.open.obj, st);
       slot.open.walls?.setAccent(st.accent);
       if (slot === this.activeSlot) {
@@ -292,7 +299,6 @@ export class Building {
         });
       }
     }
-    if (slot.open) setBoardroom(slot.open.obj, isChairmanFloor(slot));
   }
 
   disposeSlot(s) {
